@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedNexus AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #2c3e50;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: #ecf0f1 !important;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-header {
+            background-color: #3498db;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        .patient-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .patient-card:hover {
+            transform: translateY(-5px);
+        }
+        .vital-badge {
+            font-size: 0.9rem;
+            padding: 8px;
+            margin: 5px;
+            border-radius: 5px;
+        }
+        .normal {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        .danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .analysis-section {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" style="display: none;">
+        <div class="d-flex flex-column align-items-center">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">MedNexus AI is analyzing patient data...</p>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-activity me-2" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M6 2a.5.5 0 0 1 .47.33L10 12.036l1.53-4.208A.5.5 0 0 1 12 7.5h3.5a.5.5 0 0 1 0 1h-3.15l-1.88 5.17a.5.5 0 0 1-.94 0L6 3.964 4.47 8.171A.5.5 0 0 1 4 8.5H.5a.5.5 0 0 1 0-1h3.15l1.88-5.17A.5.5 0 0 1 6 2Z"/>
+                </svg>
+                MedNexus AI
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Knowledge Base</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">MedNexus AI - Biomedical Data Analysis System</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Welcome to MedNexus AI, an advanced system that synthesizes multi-modal biomedical data to provide precise diagnoses, treatment plans, and real-time patient monitoring.</p>
+                        <p>Select a patient from the list below to analyze their medical data and generate insights.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Patient List</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="patient-list" class="list-group">
+                            <!-- Patient list will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div id="patient-details" style="display: none;">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Patient Details</h5>
+                            <button id="analyze-btn" class="btn btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lightning-fill me-1" viewBox="0 0 16 16">
+                                    <path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641l2.5-8.5z"/>
+                                </svg>
+                                Analyze with MedNexus AI
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Personal Information</h6>
+                                    <p><strong>Name:</strong> <span id="patient-name"></span></p>
+                                    <p><strong>Age:</strong> <span id="patient-age"></span></p>
+                                    <p><strong>Gender:</strong> <span id="patient-gender"></span></p>
+                                    <h6>Medical Conditions</h6>
+                                    <ul id="patient-conditions"></ul>
+                                    <h6>Medications</h6>
+                                    <ul id="patient-medications"></ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Current Vitals</h6>
+                                    <div id="patient-vitals" class="d-flex flex-wrap"></div>
+                                    <h6 class="mt-3">Lab Results</h6>
+                                    <div id="patient-labs"></div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Vital Signs Trend</h6>
+                                    <div class="chart-container">
+                                        <canvas id="vitals-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="analysis-section" class="analysis-section mt-4">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">MedNexus AI Analysis</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-info text-white">Diagnosis</div>
+                                            <div class="card-body">
+                                                <ul id="diagnosis-list"></ul>
+                                            </div>
+                                        </div>
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-warning text-dark">Risk Factors</div>
+                                            <div class="card-body">
+                                                <ul id="risk-factors-list"></ul>
+                                            </div>
+                                        </div>
+                                        <div class="card">
+                                            <div class="card-header bg-danger text-white">AI Insights</div>
+                                            <div class="card-body">
+                                                <div id="ai-insights-container"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-success text-white">Treatment Recommendations</div>
+                                            <div class="card-body">
+                                                <ul id="treatment-list"></ul>
+                                            </div>
+                                        </div>
+                                        <div class="card">
+                                            <div class="card-header bg-secondary text-white">Monitoring Recommendations</div>
+                                            <div class="card-body">
+                                                <ul id="monitoring-list"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header bg-primary text-white">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h5 class="mb-0">Real-time Patient Monitoring</h5>
+                                                    <button id="start-monitoring-btn" class="btn btn-light btn-sm">Start Monitoring</button>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="realtime-alerts" class="mb-3"></div>
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <div class="card">
+                                                            <div class="card-body text-center">
+                                                                <h3 id="realtime-hr">--</h3>
+                                                                <p class="mb-0">Heart Rate</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="card">
+                                                            <div class="card-body text-center">
+                                                                <h3 id="realtime-bp">--/--</h3>
+                                                                <p class="mb-0">Blood Pressure</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="card">
+                                                            <div class="card-body text-center">
+                                                                <h3 id="realtime-temp">--</h3>
+                                                                <p class="mb-0">Temperature</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="card">
+                                                            <div class="card-body text-center">
+                                                                <h3 id="realtime-o2">--</h3>
+                                                                <p class="mb-0">O₂ Saturation</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Medical Images</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="medical-images-container" class="row">
+                                    <!-- Medical images will be loaded here -->
+                                </div>
+                                <div id="image-analysis-container" style="display: none;" class="mt-4">
+                                    <h5>AI Image Analysis</h5>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between mb-3">
+                                                <div>
+                                                    <h6 id="image-analysis-title">Image Analysis</h6>
+                                                    <p id="image-analysis-timestamp" class="text-muted small"></p>
+                                                </div>
+                                                <div>
+                                                    <span class="badge bg-primary" id="image-analysis-confidence"></span>
+                                                </div>
+                                            </div>
+                                            <h6>Findings:</h6>
+                                            <ul id="image-findings-list"></ul>
+                                            <h6>Recommendations:</h6>
+                                            <ul id="image-recommendations-list"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Disease Progression Prediction</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="progression-container">
+                                    <button id="predict-progression-btn" class="btn btn-primary mb-3">
+                                        Generate Progression Prediction
+                                    </button>
+                                    <div id="progression-results" class="row">
+                                        <!-- Progression predictions will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script>
+        let currentPatientId = null;
+        let vitalsChart = null;
+        let monitoringInterval = null;
+
+        // Fetch patient list when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchPatients();
+            
+            // Add event listeners for new buttons
+            document.getElementById('start-monitoring-btn').addEventListener('click', toggleMonitoring);
+            document.getElementById('predict-progression-btn').addEventListener('click', predictProgression);
+        });
+
+        // Analyze button click handler
+        document.getElementById('analyze-btn').addEventListener('click', function() {
+            if (currentPatientId) {
+                analyzePatient(currentPatientId);
+            }
+        });
+
+        // Fetch patient list from API
+        function fetchPatients() {
+            fetch('/api/patients')
+                .then(response => response.json())
+                .then(patients => {
+                    const patientList = document.getElementById('patient-list');
+                    patientList.innerHTML = '';
+                    
+                    patients.forEach(patient => {
+                        const patientItem = document.createElement('a');
+                        patientItem.href = '#';
+                        patientItem.className = 'list-group-item list-group-item-action patient-card';
+                        patientItem.innerHTML = `
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${patient.name}</h6>
+                                <small>ID: ${patient.id}</small>
+                            </div>
+                            <small>${patient.age} years, ${patient.gender}</small>
+                        `;
+                        patientItem.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            fetchPatientDetails(patient.id);
+                        });
+                        patientList.appendChild(patientItem);
+                    });
+                })
+                .catch(error => console.error('Error fetching patients:', error));
+        }
+
+        // Fetch patient details from API
+        function fetchPatientDetails(patientId) {
+            currentPatientId = patientId;
+            
+            // Clear any existing monitoring
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                document.getElementById('start-monitoring-btn').textContent = 'Start Monitoring';
+            }
+            
+            fetch(`/api/patients/${patientId}`)
+                .then(response => response.json())
+                .then(patient => {
+                    document.getElementById('patient-details').style.display = 'block';
+                    document.getElementById('analysis-section').style.display = 'none';
+                    
+                    // Fill in patient details
+                    document.getElementById('patient-name').textContent = patient.name;
+                    document.getElementById('patient-age').textContent = patient.age;
+                    document.getElementById('patient-gender').textContent = patient.gender;
+                    
+                    // Fill in conditions
+                    const conditionsList = document.getElementById('patient-conditions');
+                    conditionsList.innerHTML = '';
+                    patient.conditions.forEach(condition => {
+                        const li = document.createElement('li');
+                        li.textContent = condition;
+                        conditionsList.appendChild(li);
+                    });
+                    
+                    // Fill in medications
+                    const medicationsList = document.getElementById('patient-medications');
+                    medicationsList.innerHTML = '';
+                    patient.medications.forEach(medication => {
+                        const li = document.createElement('li');
+                        li.textContent = medication;
+                        medicationsList.appendChild(li);
+                    });
+                    
+                    // Fill in vitals
+                    const vitalsContainer = document.getElementById('patient-vitals');
+                    vitalsContainer.innerHTML = '';
+                    
+                    // Get the most recent vitals
+                    const latestHeartRate = patient.vitals.heart_rate[patient.vitals.heart_rate.length - 1];
+                    const latestBP = patient.vitals.blood_pressure[patient.vitals.blood_pressure.length - 1];
+                    const latestTemp = patient.vitals.temperature[patient.vitals.temperature.length - 1];
+                    const latestO2 = patient.vitals.oxygen_saturation[patient.vitals.oxygen_saturation.length - 1];
+                    
+                    // Create vital badges with appropriate colors
+                    const hrClass = latestHeartRate > 100 || latestHeartRate < 60 ? 'danger' : 'normal';
+                    const tempClass = latestTemp > 99.5 || latestTemp < 97.8 ? 'warning' : 'normal';
+                    const o2Class = latestO2 < 95 ? 'danger' : (latestO2 < 97 ? 'warning' : 'normal');
+                    
+                    vitalsContainer.innerHTML = `
+                        <div class="vital-badge ${hrClass}">HR: ${latestHeartRate} bpm</div>
+                        <div class="vital-badge normal">BP: ${latestBP}</div>
+                        <div class="vital-badge ${tempClass}">Temp: ${latestTemp}°F</div>
+                        <div class="vital-badge ${o2Class}">O₂: ${latestO2}%</div>
+                    `;
+                    
+                    // Fill in lab results
+                    const labsContainer = document.getElementById('patient-labs');
+                    labsContainer.innerHTML = '';
+                    
+                    const labTable = document.createElement('table');
+                    labTable.className = 'table table-sm table-bordered';
+                    labTable.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>Test</th>
+                                <th>Value</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lab-results-body">
+                        </tbody>
+                    `;
+                    labsContainer.appendChild(labTable);
+                    
+                    const labBody = document.getElementById('lab-results-body');
+                    
+                    for (const [test, values] of Object.entries(patient.lab_results)) {
+                        const latestValue = values[values.length - 1];
+                        let status = 'Normal';
+                        let statusClass = 'text-success';
+                        
+                        // Simple rules for lab result interpretation
+                        if (test === 'glucose' && latestValue > 125) {
+                            status = 'High';
+                            statusClass = 'text-danger';
+                        } else if (test === 'hba1c' && latestValue > 6.5) {
+                            status = 'High';
+                            statusClass = 'text-danger';
+                        } else if (test === 'cholesterol' && latestValue > 200) {
+                            status = 'High';
+                            statusClass = 'text-danger';
+                        } else if (test === 'ldl' && latestValue > 100) {
+                            status = 'High';
+                            statusClass = 'text-danger';
+                        } else if (test === 'hdl' && latestValue < 40) {
+                            status = 'Low';
+                            statusClass = 'text-danger';
+                        }
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${test.charAt(0).toUpperCase() + test.slice(1)}</td>
+                            <td>${latestValue}</td>
+                            <td class="${statusClass}">${status}</td>
+                        `;
+                        labBody.appendChild(row);
+                    }
+                    
+                    // Create vitals chart
+                    createVitalsChart(patient.vitals);
+                    
+                    // Fetch medical images for this patient
+                    fetchMedicalImages(patientId);
+                })
+                .catch(error => console.error('Error fetching patient details:', error));
+        }
+
+        // Create chart for vital signs
+        function createVitalsChart(vitals) {
+            const ctx = document.getElementById('vitals-chart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (vitalsChart) {
+                vitalsChart.destroy();
+            }
+            
+            // Create labels (1, 2, 3, etc. for each reading)
+            const labels = Array.from({length: vitals.heart_rate.length}, (_, i) => i + 1);
+            
+            vitalsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Heart Rate (bpm)',
+                            data: vitals.heart_rate,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Temperature (°F)',
+                            data: vitals.temperature,
+                            borderColor: 'rgb(255, 159, 64)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                            tension: 0.1,
+                            fill: true,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Oxygen Saturation (%)',
+                            data: vitals.oxygen_saturation,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.1,
+                            fill: true,
+                            yAxisID: 'y2'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Heart Rate (bpm)'
+                            },
+                            min: 50,
+                            max: 100
+                        },
+                        y1: {
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°F)'
+                            },
+                            min: 97,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        y2: {
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'O₂ Saturation (%)'
+                            },
+                            min: 90,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Analyze patient data
+        function analyzePatient(patientId) {
+            // Show loading spinner
+            document.getElementById('loading').style.display = 'flex';
+            
+            fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ patient_id: patientId })
+            })
+            .then(response => response.json())
+            .then(analysis => {
+                // Hide loading spinner
+                document.getElementById('loading').style.display = 'none';
+                
+                // Show analysis section
+                document.getElementById('analysis-section').style.display = 'block';
+                
+                // Fill in diagnosis
+                const diagnosisList = document.getElementById('diagnosis-list');
+                diagnosisList.innerHTML = '';
+                analysis.diagnosis.forEach(diagnosis => {
+                    const li = document.createElement('li');
+                    li.textContent = diagnosis;
+                    diagnosisList.appendChild(li);
+                });
+                
+                // Fill in risk factors
+                const riskFactorsList = document.getElementById('risk-factors-list');
+                riskFactorsList.innerHTML = '';
+                analysis.risk_factors.forEach(factor => {
+                    const li = document.createElement('li');
+                    li.textContent = factor;
+                    riskFactorsList.appendChild(li);
+                });
+                
+                // Fill in treatment recommendations
+                const treatmentList = document.getElementById('treatment-list');
+                treatmentList.innerHTML = '';
+                analysis.treatment_recommendations.forEach(treatment => {
+                    const li = document.createElement('li');
+                    li.textContent = treatment;
+                    treatmentList.appendChild(li);
+                });
+                
+                // Fill in monitoring recommendations
+                const monitoringList = document.getElementById('monitoring-list');
+                monitoringList.innerHTML = '';
+                analysis.monitoring_recommendations.forEach(recommendation => {
+                    const li = document.createElement('li');
+                    li.textContent = recommendation;
+                    monitoringList.appendChild(li);
+                });
+                
+                // Fill in AI insights
+                const insightsContainer = document.getElementById('ai-insights-container');
+                insightsContainer.innerHTML = '';
+                
+                if (analysis.ai_insights && analysis.ai_insights.length > 0) {
+                    analysis.ai_insights.forEach(insight => {
+                        const confidenceClass = insight.confidence > 0.9 ? 'confidence-high' : 
+                                              (insight.confidence > 0.8 ? 'confidence-medium' : 'confidence-low');
+                        
+                        const insightCard = document.createElement('div');
+                        insightCard.className = 'condition-card mb-2';
+                        insightCard.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6>${insight.message}</h6>
+                                <span class="badge bg-secondary ${confidenceClass}">${Math.round(insight.confidence * 100)}%</span>
+                            </div>
+                            <p class="data-source">Source: ${insight.type}</p>
+                        `;
+                        insightsContainer.appendChild(insightCard);
+                    });
+                } else {
+                    insightsContainer.innerHTML = '<p>No AI insights available for this patient.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error analyzing patient data:', error);
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Fetch medical images for a patient
+        function fetchMedicalImages(patientId) {
+            fetch(`/api/images/${patientId}`)
+                .then(response => response.json())
+                .then(images => {
+                    const imagesContainer = document.getElementById('medical-images-container');
+                    imagesContainer.innerHTML = '';
+                    
+                    if (images.length === 0) {
+                        imagesContainer.innerHTML = '<p>No medical images available for this patient.</p>';
+                        return;
+                    }
+                    
+                    images.forEach(image => {
+                        const imageCol = document.createElement('div');
+                        imageCol.className = 'col-md-4 mb-3';
+                        imageCol.innerHTML = `
+                            <div class="card h-100">
+                                <img src="${image.url}" class="card-img-top" alt="${image.type} of ${image.body_part}">
+                                <div class="card-body">
+                                    <h5 class="card-title">${image.type} - ${image.body_part}</h5>
+                                    <p class="card-text">${image.findings}</p>
+                                    <p class="text-muted small">Date: ${image.date}</p>
+                                    <button class="btn btn-primary btn-sm analyze-image-btn" data-image-id="${image.id}">
+                                        Analyze with AI
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        imagesContainer.appendChild(imageCol);
+                    });
+                    
+                    // Add event listeners to analyze buttons
+                    document.querySelectorAll('.analyze-image-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const imageId = this.getAttribute('data-image-id');
+                            analyzeImage(imageId);
+                        });
+                    });
+                })
+                .catch(error => console.error('Error fetching medical images:', error));
+        }
+        
+        // Analyze a medical image
+        function analyzeImage(imageId) {
+            // Show loading spinner
+            document.getElementById('loading').style.display = 'flex';
+            
+            fetch('/api/analyze/image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image_id: imageId })
+            })
+            .then(response => response.json())
+            .then(analysis => {
+                // Hide loading spinner
+                document.getElementById('loading').style.display = 'none';
+                
+                // Show analysis container
+                const analysisContainer = document.getElementById('image-analysis-container');
+                analysisContainer.style.display = 'block';
+                
+                // Update analysis details
+                document.getElementById('image-analysis-timestamp').textContent = `Analysis performed: ${analysis.analysis_timestamp}`;
+                document.getElementById('image-analysis-confidence').textContent = `Confidence: ${Math.round(analysis.confidence_score * 100)}%`;
+                
+                // Fill in findings
+                const findingsList = document.getElementById('image-findings-list');
+                findingsList.innerHTML = '';
+                
+                analysis.findings.forEach(finding => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <strong>${finding.description}</strong> (${Math.round(finding.confidence * 100)}% confidence)
+                        <br><small>Location: ${finding.location}</small>
+                    `;
+                    findingsList.appendChild(li);
+                });
+                
+                // Fill in recommendations
+                const recommendationsList = document.getElementById('image-recommendations-list');
+                recommendationsList.innerHTML = '';
+                
+                analysis.recommendations.forEach(recommendation => {
+                    const li = document.createElement('li');
+                    li.textContent = recommendation;
+                    recommendationsList.appendChild(li);
+                });
+                
+                // Scroll to the analysis section
+                analysisContainer.scrollIntoView({ behavior: 'smooth' });
+            })
+            .catch(error => {
+                console.error('Error analyzing image:', error);
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Toggle real-time monitoring
+        function toggleMonitoring() {
+            const button = document.getElementById('start-monitoring-btn');
+            
+            if (monitoringInterval) {
+                // Stop monitoring
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                button.textContent = 'Start Monitoring';
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-light');
+            } else {
+                // Start monitoring
+                button.textContent = 'Stop Monitoring';
+                button.classList.remove('btn-light');
+                button.classList.add('btn-danger');
+                
+                // Immediately fetch data
+                fetchRealtimeData();
+                
+                // Set up interval to fetch data every 3 seconds
+                monitoringInterval = setInterval(fetchRealtimeData, 3000);
+            }
+        }
+        
+        // Fetch real-time patient data
+        function fetchRealtimeData() {
+            if (!currentPatientId) return;
+            
+            fetch(`/api/realtime/${currentPatientId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update vital signs
+                    document.getElementById('realtime-hr').textContent = data.heart_rate;
+                    document.getElementById('realtime-bp').textContent = data.blood_pressure;
+                    document.getElementById('realtime-temp').textContent = data.temperature;
+                    document.getElementById('realtime-o2').textContent = data.oxygen_saturation;
+                    
+                    // Update alerts
+                    const alertsContainer = document.getElementById('realtime-alerts');
+                    
+                    if (data.alerts && data.alerts.length > 0) {
+                        alertsContainer.innerHTML = '';
+                        
+                        data.alerts.forEach(alert => {
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = `alert alert-${alert.type === 'warning' ? 'warning' : 'danger'} mb-2`;
+                            alertDiv.innerHTML = `
+                                <strong>${alert.type === 'warning' ? 'Warning' : 'Alert'}:</strong> ${alert.message}
+                                <br><small>Timestamp: ${data.timestamp}</small>
+                            `;
+                            alertsContainer.appendChild(alertDiv);
+                        });
+                    } else {
+                        alertsContainer.innerHTML = `
+                            <div class="alert alert-success">
+                                <strong>Status:</strong> All vital signs within normal ranges
+                                <br><small>Timestamp: ${data.timestamp}</small>
+                            </div>
+                        `;
+                    }
+                    
+                    // Apply color coding to vital signs
+                    const hrElement = document.getElementById('realtime-hr');
+                    const bpElement = document.getElementById('realtime-bp');
+                    const tempElement = document.getElementById('realtime-temp');
+                    const o2Element = document.getElementById('realtime-o2');
+                    
+                    // Reset classes
+                    hrElement.className = '';
+                    bpElement.className = '';
+                    tempElement.className = '';
+                    o2Element.className = '';
+                    
+                    // Heart rate coloring
+                    if (data.heart_rate > 100 || data.heart_rate < 60) {
+                        hrElement.className = 'text-danger';
+                    }
+                    
+                    // Blood pressure coloring
+                    const [systolic, diastolic] = data.blood_pressure.split('/').map(Number);
+                    if (systolic > 140 || diastolic > 90) {
+                        bpElement.className = 'text-danger';
+                    }
+                    
+                    // Temperature coloring
+                    if (data.temperature > 99.5) {
+                        tempElement.className = 'text-danger';
+                    } else if (data.temperature > 99.0) {
+                        tempElement.className = 'text-warning';
+                    }
+                    
+                    // Oxygen saturation coloring
+                    if (data.oxygen_saturation < 95) {
+                        o2Element.className = 'text-danger';
+                    } else if (data.oxygen_saturation < 97) {
+                        o2Element.className = 'text-warning';
+                    }
+                })
+                .catch(error => console.error('Error fetching real-time data:', error));
+        }
+        
+        // Predict disease progression
+        function predictProgression() {
+            if (!currentPatientId) return;
+            
+            // Show loading spinner
+            document.getElementById('loading').style.display = 'flex';
+            
+            fetch(`/api/predict/progression/${currentPatientId}`)
+                .then(response => response.json())
+                .then(predictions => {
+                    // Hide loading spinner
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    const resultsContainer = document.getElementById('progression-results');
+                    resultsContainer.innerHTML = '';
+                    
+                    predictions.forEach(prediction => {
+                        const trajectoryClass = prediction.trajectory === 'improving' ? 'success' : 
+                                              (prediction.trajectory === 'stable' ? 'info' : 'danger');
+                        
+                        const predictionCol = document.createElement('div');
+                        predictionCol.className = 'col-md-6 mb-3';
+                        predictionCol.innerHTML = `
+                            <div class="card">
+                                <div class="card-header bg-${trajectoryClass} text-white">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">${prediction.condition}</h5>
+                                        <span class="badge bg-light text-dark">
+                                            ${prediction.time_horizon} outlook
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <span class="badge bg-${trajectoryClass}">
+                                            Trajectory: ${prediction.trajectory.charAt(0).toUpperCase() + prediction.trajectory.slice(1)}
+                                        </span>
+                                        <span class="badge bg-secondary ms-2">
+                                            Confidence: ${Math.round(prediction.confidence * 100)}%
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <h6>Key Metrics:</h6>
+                                        <ul>
+                                            ${Object.entries(prediction.key_metrics).map(([key, value]) => 
+                                                `<li><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</li>`
+                                            ).join('')}
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <h6>Risk Factors:</h6>
+                                        <ul>
+                                            ${prediction.risk_factors.map(factor => `<li>${factor}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                    
+                                    <div>
+                                        <h6>Recommendations:</h6>
+                                        <ul>
+                                            ${prediction.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="card-footer text-muted small">
+                                    Prediction generated: ${prediction.prediction_timestamp}
+                                </div>
+                            </div>
+                        `;
+                        resultsContainer.appendChild(predictionCol);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error predicting disease progression:', error);
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+    </script>
+</body>
+</html>
