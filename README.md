@@ -21,7 +21,7 @@ MedNexus AI is an advanced biomedical data analysis system that synthesizes mult
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/mednexus-ai.git
+git clone https://github.com/KOSASIH/mednexus-ai.git
 cd mednexus-ai
 ```
 
